@@ -7,7 +7,7 @@ services:
   - type: web
     name: job-tracker-web
     env: ruby
-    plan: free
+    plan: starter
     buildCommand: bundle install
     startCommand: bundle exec ruby app.rb
     healthCheckPath: /health
@@ -28,7 +28,7 @@ services:
   - type: worker
     name: job-tracker-worker
     env: ruby
-    plan: free
+    plan: starter
     buildCommand: bundle install
     startCommand: bundle exec ruby worker.rb
     envVars:
@@ -42,7 +42,7 @@ services:
   - type: cron
     name: job-tracker-staleness-checker
     env: ruby
-    plan: free
+    plan: starter
     schedule: "0 9 * * *"
     buildCommand: bundle install
     startCommand: bundle exec ruby cron.rb
