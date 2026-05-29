@@ -9,7 +9,7 @@ services:
     env: ruby
     plan: starter
     buildCommand: bundle install
-    startCommand: bundle exec ruby app.rb
+    startCommand: bundle exec puma -C config/puma.rb
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
@@ -20,8 +20,6 @@ services:
         sync: false           # Set manually in Render dashboard — never commit API keys
       - key: RACK_ENV
         value: production
-      - key: PORT
-        value: 10000
 
   # --- Background Worker (Heroku equivalent: Procfile worker: process) ---
   # Handles async tasks so the web process stays responsive.

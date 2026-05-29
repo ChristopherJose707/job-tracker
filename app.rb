@@ -29,7 +29,7 @@ end
 # -------------------------------------------------------
 # Sinatra config
 # -------------------------------------------------------
-set :port, ENV["PORT"] || 4567
+set :port, ENV.fetch("PORT", 4567).to_i
 set :bind, "0.0.0.0"
 set :views, File.dirname(__FILE__) + "/views"
 set :public_folder, File.dirname(__FILE__) + "/public"
