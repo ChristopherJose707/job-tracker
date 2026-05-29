@@ -30,7 +30,7 @@ end
 
 unless DB[:jobs].columns.include?(:resume)
   DB.alter_table :jobs do
-    add_column :resume, Text
+    add_column :resume, :text
   end
 end
 
