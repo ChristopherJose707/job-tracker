@@ -28,7 +28,7 @@ DB.create_table? :jobs do
   Boolean     :stale,      default: false
 end
 
-unless DB[:jobs].columns.map { |c| c[:name] }.include?(:resume)
+unless DB[:jobs].columns.include?(:resume)
   DB.alter_table :jobs do
     add_column :resume, Text
   end
