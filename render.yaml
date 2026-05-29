@@ -16,7 +16,7 @@ services:
         fromDatabase:
           name: job-tracker-db
           property: connectionString
-      - key: OPENAI_API_KEY
+      - key: GEMINI_API_KEY
         sync: false           # Set manually in Render dashboard — never commit API keys
       - key: RACK_ENV
         value: production
@@ -34,7 +34,7 @@ services:
         fromDatabase:
           name: job-tracker-db
           property: connectionString
-      - key: OPENAI_API_KEY
+      - key: GEMINI_API_KEY
         sync: false
 
   # --- Cron Job (Heroku equivalent: Heroku Scheduler add-on — paid) ---

@@ -1,14 +1,14 @@
 require "sequel"
-require "httparty"
 require "json"
 require "dotenv/load"
+require_relative "ai_analyzer"
 
 # -------------------------------------------------------
 # Background Worker
 # Heroku equivalent: Procfile `worker:` process
 #
 # Polls for jobs that have a JD but no AI analysis yet,
-# then calls OpenAI and writes the result back to Postgres.
+# then calls Google Gemini and writes the result back to Postgres.
 # Keeps the web process fast — AI calls can take 5-10s.
 # -------------------------------------------------------
 
@@ -18,57 +18,17 @@ Jobs = DB[:jobs]
 puts "[worker] Started. Polling for pending AI analysis jobs..."
 
 def analyze_job(job)
-  api_key = ENV["OPENAI_API_KEY"]&.strip
-  return if api_key.nil? || api_key.empty?
+  return unless AIAnalyzer.configured?
 
   puts "[worker] Analyzing job #{job[:id]}: #{job[:role]} at #{job[:company]}"
 
-  prompt = <<~PROMPT
-    You are a career coach reviewing a job application.
-
-    ROLE APPLIED FOR: #{job[:role]} at #{job[:company]}
-
-    JOB DESCRIPTION:
-    #{job[:jd_text]}
-
-    Return a JSON object with:
-    - fit_score: integer 0-100
-    - strengths: array of 3 strings (why this candidate fits)
-    - gaps: array of up to 3 strings (honest gaps to address)
-    - talking_points: array of 3 interview talking points to prepare
-
-    Return only valid JSON, no markdown.
-  PROMPT
-
-  response = HTTParty.post(
-    "https://api.openai.com/v1/chat/completions",
-    headers: {
-      "Authorization" => "Bearer #{api_key}",
-      "Content-Type"  => "application/json"
-    },
-    body: {
-      model:    "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }]
-    }.to_json,
-    timeout: 30
-  )
-
-  parsed = response.parsed_response
-  parsed = JSON.parse(response.body) if parsed.is_a?(String) && !response.body.to_s.strip.empty?
-
-  unless response.success?
-    detail = parsed.is_a?(Hash) ? (parsed.dig("error", "message") || parsed["error"]) : response.body
-    puts "[worker] OpenAI error on job #{job[:id]} (#{response.code}): #{detail}"
+  result = AIAnalyzer.analyze(job, timeout: 30)
+  if result[:error]
+    puts "[worker] Gemini error on job #{job[:id]}: #{result[:error]}"
     return
   end
 
-  analysis = parsed.is_a?(Hash) ? parsed.dig("choices", 0, "message", "content") : nil
-
-  if analysis.nil? || analysis.to_s.strip.empty?
-    detail = parsed.is_a?(Hash) ? parsed.dig("error", "message") : "empty response"
-    puts "[worker] No analysis for job #{job[:id]}: #{detail}"
-    return
-  end
+  analysis = result[:analysis]
 
   Jobs.where(id: job[:id]).update(
     ai_analysis: analysis,

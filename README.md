@@ -18,7 +18,7 @@ firsthand.
 ## Features
 
 - Track job applications with status (applied → interviewing → offer → rejected)
-- Paste a job description → background worker analyzes it with OpenAI GPT-4o-mini
+- Paste a job description → background worker analyzes it with Google Gemini
 - Daily cron job flags stale applications (no activity in 7+ days)
 - Full UI — no framework, plain Sinatra + ERB
 
@@ -35,7 +35,7 @@ createdb job_tracker
 
 # 3. Copy env file and add your keys
 cp .env.example .env
-# Edit .env with your DATABASE_URL and OPENAI_API_KEY
+# Edit .env with your DATABASE_URL and GEMINI_API_KEY
 
 # 4. Run the web server
 bundle exec ruby app.rb
@@ -56,7 +56,7 @@ bundle exec ruby cron.rb
 1. Push this repo to GitHub
 2. Go to [render.com](https://render.com) → New → Blueprint
 3. Connect your repo — Render reads `render.yaml` and provisions everything
-4. Set `OPENAI_API_KEY` in the Render dashboard (marked `sync: false` for security)
+4. Set `GEMINI_API_KEY` in the Render dashboard (marked `sync: false` for security)
 5. Done — web, worker, cron, and Postgres all running
 
 ### Option B — Manual (mirrors what a Heroku migration looks like)
@@ -65,7 +65,7 @@ bundle exec ruby cron.rb
 2. Create a **Worker** → same repo → start: `bundle exec ruby worker.rb`
 3. Create a **Cron Job** → schedule `0 9 * * *` → start: `bundle exec ruby cron.rb`
 4. Create a **Managed Postgres** instance
-5. Add `DATABASE_URL` (from Postgres instance) and `OPENAI_API_KEY` as environment variables
+5. Add `DATABASE_URL` (from Postgres instance) and `GEMINI_API_KEY` as environment variables
 
 ---
 
@@ -84,7 +84,7 @@ Heroku Scheduler (paid add-on)
 heroku addons:create heroku-postgresql
 → render.yaml databases: - name: job-tracker-db
 
-heroku config:set OPENAI_API_KEY=...
+heroku config:set GEMINI_API_KEY=...
 → Render dashboard → Environment → Add Variable
   (or render.yaml envVars with sync: false)
 

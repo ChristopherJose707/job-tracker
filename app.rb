@@ -2,8 +2,8 @@ require "sinatra"
 require "sinatra/json"
 require "sequel"
 require "json"
-require "httparty"
 require "dotenv/load"
+require_relative "ai_analyzer"
 
 # -------------------------------------------------------
 # Database setup
@@ -82,7 +82,7 @@ end
 
 # -------------------------------------------------------
 # AI Analysis endpoint
-# Calls OpenAI to score fit and surface talking points.
+# Calls Google Gemini to score fit and surface talking points.
 # This is the "LLM-powered app on Render" talking point.
 # -------------------------------------------------------
 post "/jobs/:id/analyze" do
@@ -90,60 +90,18 @@ post "/jobs/:id/analyze" do
   halt 404, json(error: "Not found") unless job
   halt 400, json(error: "No JD text") if job[:jd_text].to_s.strip.empty?
 
-  api_key = ENV["OPENAI_API_KEY"]&.strip
-  halt 503, json(error: "AI not configured — set OPENAI_API_KEY on the web service") if api_key.nil? || api_key.empty?
-
-  prompt = <<~PROMPT
-    You are a career coach reviewing a job application.
-
-    ROLE APPLIED FOR: #{job[:role]} at #{job[:company]}
-
-    JOB DESCRIPTION:
-    #{job[:jd_text]}
-
-    Return a JSON object with:
-    - fit_score: integer 0-100
-    - strengths: array of 3 strings (why this candidate fits)
-    - gaps: array of up to 3 strings (honest gaps to address)
-    - talking_points: array of 3 interview talking points to prepare
-
-    Return only valid JSON, no markdown.
-  PROMPT
-
-  response = HTTParty.post(
-    "https://api.openai.com/v1/chat/completions",
-    headers: {
-      "Authorization" => "Bearer #{api_key}",
-      "Content-Type"  => "application/json"
-    },
-    body: {
-      model:    "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }]
-    }.to_json,
-    timeout: 60
-  )
-
-  parsed = response.parsed_response
-  parsed = JSON.parse(response.body) if parsed.is_a?(String) && !response.body.to_s.strip.empty?
-
-  unless response.success?
-    detail = parsed.is_a?(Hash) ? (parsed.dig("error", "message") || parsed["error"]) : response.body
-    halt 502, json(error: "OpenAI request failed (#{response.code}): #{detail}")
-  end
-
-  analysis_text = parsed.is_a?(Hash) ? parsed.dig("choices", 0, "message", "content") : nil
-
-  if analysis_text.nil? || analysis_text.to_s.strip.empty?
-    detail = parsed.is_a?(Hash) ? parsed.dig("error", "message") : "empty response"
-    halt 502, json(error: "OpenAI returned no analysis: #{detail}")
+  result = AIAnalyzer.analyze(job)
+  if result[:error]
+    status = result[:error].include?("not configured") ? 503 : 502
+    halt status, json(error: result[:error])
   end
 
   Jobs.where(id: params[:id]).update(
-    ai_analysis: analysis_text,
+    ai_analysis: result[:analysis],
     updated_at:  Time.now
   )
 
-  json JSON.parse(analysis_text)
+  json JSON.parse(result[:analysis])
 rescue => e
   json error: e.message
 end
