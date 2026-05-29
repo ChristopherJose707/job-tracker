@@ -42,7 +42,7 @@ services:
   - type: cron
     name: job-tracker-staleness-checker
     env: ruby
-    plan: free
+    plan: starter
     schedule: "0 9 * * *"
     buildCommand: bundle install
     startCommand: bundle exec ruby cron.rb
