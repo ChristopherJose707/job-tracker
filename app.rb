@@ -4,6 +4,7 @@ require "sequel"
 require "json"
 require "dotenv/load"
 require_relative "ai_analyzer"
+require_relative "resume_extractor"
 
 # -------------------------------------------------------
 # Database setup
@@ -20,10 +21,17 @@ DB.create_table? :jobs do
   String      :url
   Text        :notes
   Text        :jd_text                           # job description for AI analysis
+  Text        :resume                            # candidate resume for AI fit analysis
   Text        :ai_analysis                       # cached AI response
   DateTime    :applied_at, default: Sequel::CURRENT_TIMESTAMP
   DateTime    :updated_at, default: Sequel::CURRENT_TIMESTAMP
   Boolean     :stale,      default: false
+end
+
+unless DB[:jobs].columns.map { |c| c[:name] }.include?(:resume)
+  DB.alter_table :jobs do
+    add_column :resume, Text
+  end
 end
 
 # -------------------------------------------------------
@@ -45,25 +53,31 @@ get "/health" do
 end
 
 get "/" do
+  @error = params[:error]
   @jobs = Jobs.order(Sequel.desc(:applied_at)).all
   @stale_count = Jobs.where(stale: true).count
   erb :index
 end
 
 post "/jobs" do
+  resume = ResumeExtractor.resolve(params[:resume], params[:resume_file])
+
   Jobs.insert(
     company:    params[:company],
     role:       params[:role],
     url:        params[:url],
     notes:      params[:notes],
     jd_text:    params[:jd_text],
+    resume:     resume.empty? ? nil : resume,
     applied_at: Time.now,
     updated_at: Time.now
   )
 
-  # Queue async AI analysis if a JD was provided
-  # Worker polls this table for jobs where ai_analysis IS NULL and jd_text IS NOT NULL
+  # Queue async AI analysis if a JD and resume were provided
+  # Worker polls for jobs where ai_analysis IS NULL, jd_text IS NOT NULL, and resume IS NOT NULL
   redirect "/"
+rescue ResumeExtractor::ExtractError => e
+  redirect "/?error=#{URI.encode_www_form_component(e.message)}"
 end
 
 patch "/jobs/:id/status" do
@@ -89,10 +103,17 @@ post "/jobs/:id/analyze" do
   job = Jobs.where(id: params[:id]).first
   halt 404, json(error: "Not found") unless job
   halt 400, json(error: "No JD text") if job[:jd_text].to_s.strip.empty?
+  halt 400, json(error: "No resume") if job[:resume].to_s.strip.empty?
 
   result = AIAnalyzer.analyze(job)
   if result[:error]
-    status = result[:error].include?("not configured") ? 503 : 502
+    status = if result[:error].include?("not configured")
+               503
+             elsif result[:error].include?("No JD text") || result[:error].include?("No resume")
+               400
+             else
+               502
+             end
     halt status, json(error: result[:error])
   end
 

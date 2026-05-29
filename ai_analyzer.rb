@@ -25,8 +25,11 @@ module AIAnalyzer
       JOB DESCRIPTION:
       #{job[:jd_text]}
 
-      Return a JSON object with:
-      - fit_score: integer 0-100
+      CANDIDATE RESUME:
+      #{job[:resume]}
+
+      Compare the candidate's resume against the job description. Return a JSON object with:
+      - fit_score: integer 0-100 (how well this specific candidate matches the role)
       - strengths: array of 3 strings (why this candidate fits)
       - gaps: array of up to 3 strings (honest gaps to address)
       - talking_points: array of 3 interview talking points to prepare
@@ -37,6 +40,8 @@ module AIAnalyzer
 
   def self.analyze(job, timeout: 60)
     return { error: "AI not configured — set GEMINI_API_KEY" } unless configured?
+    return { error: "No JD text" } if job[:jd_text].to_s.strip.empty?
+    return { error: "No resume" } if job[:resume].to_s.strip.empty?
 
     response = HTTParty.post(
       "https://generativelanguage.googleapis.com/v1beta/models/#{model}:generateContent",

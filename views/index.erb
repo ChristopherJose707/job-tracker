@@ -58,6 +58,16 @@
       color: #7a6000;
     }
 
+    .error-banner {
+      background: #fdecea;
+      border: 1px solid #f5c2c7;
+      border-radius: 6px;
+      padding: 10px 16px;
+      margin-bottom: 20px;
+      font-size: 13px;
+      color: #842029;
+    }
+
     .add-form {
       background: white;
       border: 1px solid #e0e0e0;
@@ -90,6 +100,25 @@
     }
 
     input:focus, textarea:focus { outline: none; border-color: #1B4F8C; background: white; }
+
+    input[type="file"] {
+      padding: 8px 0;
+      background: transparent;
+      border: none;
+      font-size: 13px;
+    }
+
+    .resume-options {
+      display: grid;
+      gap: 12px;
+    }
+
+    .resume-option-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #777;
+      margin-bottom: 4px;
+    }
 
     textarea { resize: vertical; min-height: 80px; }
 
@@ -222,10 +251,14 @@
   </div>
   <% end %>
 
+  <% if @error && !@error.empty? %>
+  <div class="error-banner"><%= @error %></div>
+  <% end %>
+
   <!-- Add Job Form -->
   <div class="add-form">
     <h2>Add Application</h2>
-    <form method="POST" action="/jobs">
+    <form method="POST" action="/jobs" enctype="multipart/form-data">
       <div class="form-grid">
         <div>
           <label>Company</label>
@@ -245,7 +278,20 @@
         </div>
         <div class="form-full">
           <label>Paste Job Description (enables AI fit analysis)</label>
-          <textarea name="jd_text" placeholder="Paste the full job description here. The background worker will analyze it and score your fit automatically."></textarea>
+          <textarea name="jd_text" placeholder="Paste the full job description here. Required for AI fit analysis."></textarea>
+        </div>
+        <div class="form-full">
+          <label>Resume (required for AI fit analysis)</label>
+          <div class="resume-options">
+            <div>
+              <div class="resume-option-label">Paste text</div>
+              <textarea name="resume" placeholder="Paste your resume here."></textarea>
+            </div>
+            <div>
+              <div class="resume-option-label">Or upload PDF</div>
+              <input type="file" name="resume_file" accept="application/pdf,.pdf">
+            </div>
+          </div>
         </div>
       </div>
       <button type="submit" class="btn btn-primary">Add Application</button>
@@ -287,8 +333,10 @@
           <td>
             <% if job[:ai_analysis] %>
               <button class="btn btn-sm btn-ai" onclick="toggleAnalysis(<%= job[:id] %>)">View Analysis</button>
-            <% elsif job[:jd_text] && !job[:jd_text].empty? %>
+            <% elsif job[:jd_text] && !job[:jd_text].empty? && job[:resume] && !job[:resume].empty? %>
               <button class="btn btn-sm btn-ai" onclick="runAnalysis(<%= job[:id] %>, this)">⚡ Analyze</button>
+            <% elsif job[:jd_text] && !job[:jd_text].empty? %>
+              <span style="color:#ccc; font-size:12px;">No resume</span>
             <% else %>
               <span style="color:#ccc; font-size:12px;">No JD</span>
             <% end %>

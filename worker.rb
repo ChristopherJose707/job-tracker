@@ -7,7 +7,7 @@ require_relative "ai_analyzer"
 # Background Worker
 # Heroku equivalent: Procfile `worker:` process
 #
-# Polls for jobs that have a JD but no AI analysis yet,
+# Polls for jobs that have a JD and resume but no AI analysis yet,
 # then calls Google Gemini and writes the result back to Postgres.
 # Keeps the web process fast — AI calls can take 5-10s.
 # -------------------------------------------------------
@@ -44,7 +44,10 @@ end
 # This pattern is intentionally simple to mirror what engineers often
 # start with on Heroku before adding Redis. Great interview talking point.
 loop do
-  pending = Jobs.where(ai_analysis: nil).exclude(jd_text: nil).exclude(jd_text: "").all
+  pending = Jobs.where(ai_analysis: nil)
+                .exclude(jd_text: nil).exclude(jd_text: "")
+                .exclude(resume: nil).exclude(resume: "")
+                .all
 
   if pending.empty?
     puts "[worker] No pending jobs. Sleeping 30s..."
