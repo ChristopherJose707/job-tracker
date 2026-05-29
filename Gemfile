@@ -1,0 +1,11 @@
+source "https://rubygems.org"
+
+gem "sinatra", "~> 3.0"
+gem "sinatra-contrib", "~> 3.0"
+gem "pg", "~> 1.5"
+gem "sequel", "~> 5.70"
+gem "puma", "~> 6.0"
+gem "dotenv", "~> 2.8"
+gem "httparty", "~> 0.21"
+gem "rufus-scheduler", "~> 3.9"
+gem "json"

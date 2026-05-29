@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Job Tracker — Deployed on Render</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f5f5f5;
+      color: #1a1a1a;
+    }
+
+    header {
+      background: #1B4F8C;
+      color: white;
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    header h1 { font-size: 20px; font-weight: 600; }
+
+    .badge {
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 12px;
+    }
+
+    .container { max-width: 960px; margin: 0 auto; padding: 32px 24px; }
+
+    .stack-callout {
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-left: 4px solid #1B4F8C;
+      border-radius: 6px;
+      padding: 14px 18px;
+      margin-bottom: 28px;
+      font-size: 13px;
+      color: #555;
+      line-height: 1.6;
+    }
+
+    .stack-callout strong { color: #1B4F8C; }
+
+    .stale-banner {
+      background: #fff8e1;
+      border: 1px solid #ffe082;
+      border-radius: 6px;
+      padding: 10px 16px;
+      margin-bottom: 20px;
+      font-size: 13px;
+      color: #7a6000;
+    }
+
+    .add-form {
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 24px;
+      margin-bottom: 32px;
+    }
+
+    .add-form h2 { font-size: 16px; margin-bottom: 16px; color: #333; }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .form-full { grid-column: 1 / -1; }
+
+    input, textarea, select {
+      width: 100%;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      padding: 9px 12px;
+      font-size: 14px;
+      font-family: inherit;
+      color: #1a1a1a;
+      background: #fafafa;
+      transition: border-color 0.15s;
+    }
+
+    input:focus, textarea:focus { outline: none; border-color: #1B4F8C; background: white; }
+
+    textarea { resize: vertical; min-height: 80px; }
+
+    label { display: block; font-size: 12px; font-weight: 600; color: #555; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+    .btn {
+      display: inline-block;
+      padding: 10px 20px;
+      border-radius: 5px;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+
+    .btn:hover { opacity: 0.85; }
+    .btn-primary { background: #1B4F8C; color: white; }
+    .btn-sm { padding: 5px 12px; font-size: 12px; }
+    .btn-ai { background: #6c3eb6; color: white; }
+    .btn-danger { background: #dc3545; color: white; }
+
+    .jobs-table {
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .jobs-table h2 { font-size: 16px; padding: 18px 24px 12px; border-bottom: 1px solid #f0f0f0; color: #333; }
+
+    table { width: 100%; border-collapse: collapse; }
+
+    th {
+      text-align: left;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #888;
+      padding: 10px 16px;
+      background: #fafafa;
+      border-bottom: 1px solid #eee;
+    }
+
+    td { padding: 12px 16px; font-size: 14px; border-bottom: 1px solid #f5f5f5; vertical-align: middle; }
+
+    tr:last-child td { border-bottom: none; }
+
+    tr.stale-row { background: #fffbf0; }
+
+    .stale-flag {
+      font-size: 11px;
+      background: #ffe082;
+      color: #7a6000;
+      border-radius: 3px;
+      padding: 1px 5px;
+      margin-left: 6px;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .status-applied      { background: #e3f2fd; color: #1565c0; }
+    .status-interviewing { background: #e8f5e9; color: #2e7d32; }
+    .status-offer        { background: #f3e5f5; color: #6a1b9a; }
+    .status-rejected     { background: #fce4ec; color: #b71c1c; }
+
+    .actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+
+    select.status-select {
+      padding: 4px 8px;
+      font-size: 12px;
+      width: auto;
+      background: white;
+    }
+
+    .analysis-panel {
+      display: none;
+      margin-top: 8px;
+      background: #f8f4ff;
+      border: 1px solid #d4b8ff;
+      border-radius: 6px;
+      padding: 12px;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .fit-score {
+      font-size: 28px;
+      font-weight: 700;
+      color: #6c3eb6;
+    }
+
+    .analysis-section { margin-top: 10px; }
+    .analysis-section strong { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: #888; display: block; margin-bottom: 4px; }
+    .analysis-section ul { padding-left: 16px; }
+    .analysis-section li { margin-bottom: 3px; }
+
+    .empty-state { padding: 40px; text-align: center; color: #aaa; font-size: 14px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🚀 Job Tracker</h1>
+  <span class="badge">Deployed on Render · Web + Worker + Cron + Postgres</span>
+</header>
+
+<div class="container">
+
+  <!-- Architecture callout — great for showing interviewers -->
+  <div class="stack-callout">
+    <strong>Render Stack:</strong>
+    This app runs a <strong>Web Service</strong> (Sinatra), a <strong>Background Worker</strong> (async AI analysis),
+    a <strong>Cron Job</strong> (daily staleness checker), and <strong>Managed Postgres</strong> —
+    all provisioned from a single <code>render.yaml</code> Blueprint.
+    Heroku equivalent: Procfile + Heroku Scheduler add-on + Heroku Postgres, unified.
+  </div>
+
+  <% if @stale_count > 0 %>
+  <div class="stale-banner">
+    ⏰ <strong><%= @stale_count %> application<%= @stale_count > 1 ? "s" : "" %></strong>
+    flagged as stale by the daily cron job (no activity in 7+ days). Time to follow up.
+  </div>
+  <% end %>
+
+  <!-- Add Job Form -->
+  <div class="add-form">
+    <h2>Add Application</h2>
+    <form method="POST" action="/jobs">
+      <div class="form-grid">
+        <div>
+          <label>Company</label>
+          <input type="text" name="company" placeholder="e.g. Render" required>
+        </div>
+        <div>
+          <label>Role</label>
+          <input type="text" name="role" placeholder="e.g. Solutions Engineer" required>
+        </div>
+        <div>
+          <label>Job URL</label>
+          <input type="url" name="url" placeholder="https://...">
+        </div>
+        <div>
+          <label>Notes</label>
+          <input type="text" name="notes" placeholder="Referral, deadline, anything relevant">
+        </div>
+        <div class="form-full">
+          <label>Paste Job Description (enables AI fit analysis)</label>
+          <textarea name="jd_text" placeholder="Paste the full job description here. The background worker will analyze it and score your fit automatically."></textarea>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary">Add Application</button>
+    </form>
+  </div>
+
+  <!-- Jobs Table -->
+  <div class="jobs-table">
+    <h2>Applications (<%= @jobs.count %>)</h2>
+    <% if @jobs.empty? %>
+      <div class="empty-state">No applications yet. Add one above.</div>
+    <% else %>
+    <table>
+      <thead>
+        <tr>
+          <th>Company / Role</th>
+          <th>Status</th>
+          <th>Applied</th>
+          <th>AI Analysis</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @jobs.each do |job| %>
+        <tr class="<%= job[:stale] ? 'stale-row' : '' %>" id="row-<%= job[:id] %>">
+          <td>
+            <strong><%= job[:company] %></strong><br>
+            <span style="color:#666; font-size:13px;"><%= job[:role] %></span>
+            <%= job[:stale] ? '<span class="stale-flag">stale</span>' : '' %>
+          </td>
+          <td>
+            <select class="status-select" onchange="updateStatus(<%= job[:id] %>, this.value)">
+              <% ["applied","interviewing","offer","rejected"].each do |s| %>
+                <option value="<%= s %>" <%= job[:status] == s ? "selected" : "" %>><%= s.capitalize %></option>
+              <% end %>
+            </select>
+          </td>
+          <td style="color:#888; font-size:13px;"><%= job[:applied_at].strftime("%b %d") rescue "—" %></td>
+          <td>
+            <% if job[:ai_analysis] %>
+              <button class="btn btn-sm btn-ai" onclick="toggleAnalysis(<%= job[:id] %>)">View Analysis</button>
+            <% elsif job[:jd_text] && !job[:jd_text].empty? %>
+              <button class="btn btn-sm btn-ai" onclick="runAnalysis(<%= job[:id] %>, this)">⚡ Analyze</button>
+            <% else %>
+              <span style="color:#ccc; font-size:12px;">No JD</span>
+            <% end %>
+          </td>
+          <td class="actions">
+            <% if job[:url] && !job[:url].empty? %>
+              <a href="<%= job[:url] %>" target="_blank" class="btn btn-sm" style="background:#f0f0f0; color:#333;">View JD</a>
+            <% end %>
+            <button class="btn btn-sm btn-danger" onclick="deleteJob(<%= job[:id] %>)">Remove</button>
+          </td>
+        </tr>
+        <% if job[:ai_analysis] %>
+        <tr id="analysis-<%= job[:id] %>" style="display:none;">
+          <td colspan="5" style="padding: 0 16px 16px;">
+            <% begin; data = JSON.parse(job[:ai_analysis]); rescue; data = nil; end %>
+            <% if data %>
+            <div class="analysis-panel" id="panel-<%= job[:id] %>" style="display:block;">
+              <div class="fit-score"><%= data["fit_score"] %>% fit</div>
+              <div class="analysis-section">
+                <strong>Strengths</strong>
+                <ul><% (data["strengths"] || []).each do |s| %><li><%= s %></li><% end %></ul>
+              </div>
+              <div class="analysis-section">
+                <strong>Gaps to Address</strong>
+                <ul><% (data["gaps"] || []).each do |g| %><li><%= g %></li><% end %></ul>
+              </div>
+              <div class="analysis-section">
+                <strong>Interview Talking Points</strong>
+                <ul><% (data["talking_points"] || []).each do |t| %><li><%= t %></li><% end %></ul>
+              </div>
+            </div>
+            <% end %>
+          </td>
+        </tr>
+        <% end %>
+        <% end %>
+      </tbody>
+    </table>
+    <% end %>
+  </div>
+
+</div>
+
+<script>
+  function updateStatus(id, status) {
+    fetch(`/jobs/${id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: `status=${status}`
+    });
+  }
+
+  function deleteJob(id) {
+    if (!confirm("Remove this application?")) return;
+    fetch(`/jobs/${id}`, { method: "DELETE" })
+      .then(() => document.getElementById(`row-${id}`).remove());
+  }
+
+  function toggleAnalysis(id) {
+    const row = document.getElementById(`analysis-${id}`);
+    row.style.display = row.style.display === "none" ? "table-row" : "none";
+  }
+
+  function runAnalysis(id, btn) {
+    btn.textContent = "Analyzing...";
+    btn.disabled = true;
+    fetch(`/jobs/${id}/analyze`, { method: "POST" })
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) { alert("Analysis error: " + data.error); btn.textContent = "⚡ Analyze"; btn.disabled = false; return; }
+        location.reload();
+      });
+  }
+</script>
+
+</body>
+</html>

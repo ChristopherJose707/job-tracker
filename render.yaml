@@ -1,0 +1,59 @@
+# render.yaml — Render Blueprint
+# Provisions the entire stack in one file.
+# Heroku equivalent: Procfile + app.json + Heroku Scheduler + config vars combined.
+
+services:
+  # --- Web Service (Heroku equivalent: Procfile web: process) ---
+  - type: web
+    name: job-tracker-web
+    env: ruby
+    plan: free
+    buildCommand: bundle install
+    startCommand: bundle exec ruby app.rb
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: job-tracker-db
+          property: connectionString
+      - key: OPENAI_API_KEY
+        sync: false           # Set manually in Render dashboard — never commit API keys
+      - key: RACK_ENV
+        value: production
+      - key: PORT
+        value: 10000
+
+  # --- Background Worker (Heroku equivalent: Procfile worker: process) ---
+  # Handles async tasks so the web process stays responsive.
+  - type: worker
+    name: job-tracker-worker
+    env: ruby
+    plan: free
+    buildCommand: bundle install
+    startCommand: bundle exec ruby worker.rb
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: job-tracker-db
+          property: connectionString
+
+  # --- Cron Job (Heroku equivalent: Heroku Scheduler add-on — paid) ---
+  # Render includes this natively. Runs daily at 9am UTC.
+  - type: cron
+    name: job-tracker-staleness-checker
+    env: ruby
+    plan: free
+    schedule: "0 9 * * *"
+    buildCommand: bundle install
+    startCommand: bundle exec ruby cron.rb
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: job-tracker-db
+          property: connectionString
+
+# --- Managed Postgres (Heroku equivalent: Heroku Postgres add-on) ---
+# DATABASE_URL is auto-injected into all services above via fromDatabase.
+databases:
+  - name: job-tracker-db
+    plan: free
