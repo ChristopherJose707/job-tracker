@@ -90,8 +90,8 @@ post "/jobs/:id/analyze" do
   halt 404, json(error: "Not found") unless job
   halt 400, json(error: "No JD text") if job[:jd_text].to_s.strip.empty?
 
-  api_key = ENV["OPENAI_API_KEY"]
-  halt 503, json(error: "AI not configured") unless api_key
+  api_key = ENV["OPENAI_API_KEY"]&.strip
+  halt 503, json(error: "AI not configured — set OPENAI_API_KEY on the web service") if api_key.nil? || api_key.empty?
 
   prompt = <<~PROMPT
     You are a career coach reviewing a job application.
@@ -119,10 +119,24 @@ post "/jobs/:id/analyze" do
     body: {
       model:    "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }]
-    }.to_json
+    }.to_json,
+    timeout: 60
   )
 
-  analysis_text = response.dig("choices", 0, "message", "content")
+  parsed = response.parsed_response
+  parsed = JSON.parse(response.body) if parsed.is_a?(String) && !response.body.to_s.strip.empty?
+
+  unless response.success?
+    detail = parsed.is_a?(Hash) ? (parsed.dig("error", "message") || parsed["error"]) : response.body
+    halt 502, json(error: "OpenAI request failed (#{response.code}): #{detail}")
+  end
+
+  analysis_text = parsed.is_a?(Hash) ? parsed.dig("choices", 0, "message", "content") : nil
+
+  if analysis_text.nil? || analysis_text.to_s.strip.empty?
+    detail = parsed.is_a?(Hash) ? parsed.dig("error", "message") : "empty response"
+    halt 502, json(error: "OpenAI returned no analysis: #{detail}")
+  end
 
   Jobs.where(id: params[:id]).update(
     ai_analysis: analysis_text,

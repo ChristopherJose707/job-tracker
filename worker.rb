@@ -18,8 +18,8 @@ Jobs = DB[:jobs]
 puts "[worker] Started. Polling for pending AI analysis jobs..."
 
 def analyze_job(job)
-  api_key = ENV["OPENAI_API_KEY"]
-  return unless api_key
+  api_key = ENV["OPENAI_API_KEY"]&.strip
+  return if api_key.nil? || api_key.empty?
 
   puts "[worker] Analyzing job #{job[:id]}: #{job[:role]} at #{job[:company]}"
 
@@ -53,7 +53,22 @@ def analyze_job(job)
     timeout: 30
   )
 
-  analysis = response.dig("choices", 0, "message", "content")
+  parsed = response.parsed_response
+  parsed = JSON.parse(response.body) if parsed.is_a?(String) && !response.body.to_s.strip.empty?
+
+  unless response.success?
+    detail = parsed.is_a?(Hash) ? (parsed.dig("error", "message") || parsed["error"]) : response.body
+    puts "[worker] OpenAI error on job #{job[:id]} (#{response.code}): #{detail}"
+    return
+  end
+
+  analysis = parsed.is_a?(Hash) ? parsed.dig("choices", 0, "message", "content") : nil
+
+  if analysis.nil? || analysis.to_s.strip.empty?
+    detail = parsed.is_a?(Hash) ? parsed.dig("error", "message") : "empty response"
+    puts "[worker] No analysis for job #{job[:id]}: #{detail}"
+    return
+  end
 
   Jobs.where(id: job[:id]).update(
     ai_analysis: analysis,
