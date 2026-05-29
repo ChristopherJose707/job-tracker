@@ -2,7 +2,7 @@ require "httparty"
 require "json"
 
 module AIAnalyzer
-  DEFAULT_MODEL = "gemini-2.0-flash"
+  DEFAULT_MODEL = "gemini-2.5-flash"
 
   def self.api_key
     ENV["GEMINI_API_KEY"]&.strip
