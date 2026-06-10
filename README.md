@@ -4,6 +4,8 @@ A multi-service web app intentionally built in a **Heroku-style architecture**,
 then deployed on **Render using Blueprints** — to demonstrate the migration path
 firsthand.
 
+https://job-tracker-web-m0zp.onrender.com
+
 ## Stack
 
 | Service | Tech | Heroku Equivalent |
