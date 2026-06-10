@@ -1,8 +1,7 @@
 # Job Tracker — Heroku → Render Migration Demo
 
 A multi-service web app intentionally built in a **Heroku-style architecture**,
-then deployed on **Render using Blueprints** — to demonstrate the migration path
-firsthand.
+then deployed on **Render using Blueprints**.
 
 https://job-tracker-web-m0zp.onrender.com
 
