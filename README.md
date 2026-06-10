@@ -69,7 +69,7 @@ bundle exec ruby cron.rb
 
 ---
 
-## Key Heroku → Render Mapping (Interview Talking Points)
+## Key Heroku → Render Mapping 
 
 ```
 Procfile web: bundle exec ruby app.rb
